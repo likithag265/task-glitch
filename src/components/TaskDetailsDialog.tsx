@@ -36,8 +36,9 @@ export default function TaskDetailsDialog({ open, task, onClose, onSave }: Props
 
   if (!task) return null;
 
-  const safeCreatedAt = task.createdAt ?? "";
-  const safeCompletedAt = task.completedAt ?? "";
+  // FORCE STRINGS TO AVOID UNDEFINED ERRORS (Vercel build)
+  const safeCreatedAt = String(task.createdAt ?? "");
+  const safeCompletedAt = String(task.completedAt ?? "");
 
   const handleSave = () => {
     onSave(task.id, {
