@@ -45,31 +45,39 @@ export function useTasks(): UseTasksState {
   const fetchedRef = useRef(false);
 
   function normalizeTasks(input: any[]): Task[] {
-    const now = Date.now();
-    return (Array.isArray(input) ? input : []).map((t, idx) => {
-      const created = t.createdAt
-        ? new Date(t.createdAt)
-        : new Date(now - (idx + 1) * 24 * 3600 * 1000);
+  // Generate a stable timestamp from ID (e.g., t-2001 → 2001 → reproducible date)
+  const stableDateFromId = (id: string) => {
+    const num = Number(id.replace(/\D/g, "")) || 1;
+    // Map number to a stable day in 2020 (without changing each reload)
+    return new Date(2020, 0, (num % 28) + 1); 
+  };
 
-      const completed =
-        t.completedAt ||
-        (t.status === 'Done'
-          ? new Date(created.getTime() + 24 * 3600 * 1000).toISOString()
-          : undefined);
+  return (Array.isArray(input) ? input : []).map((t) => {
+    // Use real createdAt → else generate stable fallback
+    const created = t.createdAt
+      ? new Date(t.createdAt)
+      : stableDateFromId(t.id ?? "");
 
-      return {
-        id: t.id,
-        title: t.title,
-        revenue: Number(t.revenue) ?? 0,
-        timeTaken: Number(t.timeTaken) > 0 ? Number(t.timeTaken) : 1,
-        priority: t.priority,
-        status: t.status,
-        notes: t.notes,
-        createdAt: created.toISOString(),
-        completedAt: completed,
-      } as Task;
-    });
-  }
+    // Compute completedAt deterministically
+    const completed =
+      t.completedAt ||
+      (t.status === "Done"
+        ? new Date(created.getTime() + 24 * 3600 * 1000).toISOString()
+        : undefined);
+
+    return {
+      id: t.id,
+      title: t.title,
+      revenue: Number(t.revenue) ?? 0,
+      timeTaken: Number(t.timeTaken) > 0 ? Number(t.timeTaken) : 1,
+      priority: t.priority,
+      status: t.status,
+      notes: t.notes,
+      createdAt: created.toISOString(), // stable + reproducible
+      completedAt: completed,
+    } as Task;
+  });
+}
 
   // ----------------------------------------------------------
   // FIXED: Initial load (Bug 1)
