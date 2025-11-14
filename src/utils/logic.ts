@@ -32,7 +32,7 @@ export function withDerived(task: Task): DerivedTask {
 }
 
 // -----------------------
-// Stable Sorting
+// Stable Sorting (SAFE)
 // -----------------------
 export function sortTasks(tasks: ReadonlyArray<DerivedTask>): DerivedTask[] {
   return [...tasks].sort((a, b) => {
@@ -41,12 +41,18 @@ export function sortTasks(tasks: ReadonlyArray<DerivedTask>): DerivedTask[] {
 
     if (bROI !== aROI) return bROI - aROI;
 
-    if (b.priorityWeight !== a.priorityWeight) {
+    if (b.priorityWeight !== a.priorityWeight)
       return b.priorityWeight - a.priorityWeight;
-    }
 
-    // Stable tie-breaker: createdAt
-    return a.createdAt.localeCompare(b.createdAt);
+    const titleComp = a.title.localeCompare(b.title);
+    if (titleComp !== 0) return titleComp;
+
+    const aC = a.createdAt ?? "";
+    const bC = b.createdAt ?? "";
+    const dateComp = aC.localeCompare(bC);
+    if (dateComp !== 0) return dateComp;
+
+    return a.id.localeCompare(b.id);
   });
 }
 
@@ -121,16 +127,21 @@ export function computeFunnel(tasks: ReadonlyArray<Task>): FunnelCounts {
 }
 
 // -------------------------------------
-// Days Between
+// Days Between (SAFE)
 // -------------------------------------
-export function daysBetween(aISO: string, bISO: string): number {
+export function daysBetween(aISO?: string, bISO?: string): number {
+  if (!aISO || !bISO) return 0;
+
   const a = new Date(aISO).getTime();
   const b = new Date(bISO).getTime();
+
+  if (isNaN(a) || isNaN(b)) return 0;
+
   return Math.max(0, Math.round((b - a) / (24 * 3600 * 1000)));
 }
 
 // -------------------------------------
-// Velocity by Priority
+// Velocity by Priority (SAFE)
 // -------------------------------------
 export function computeVelocityByPriority(tasks: ReadonlyArray<Task>) {
   const groups: Record<Task["priority"], number[]> = {
@@ -140,8 +151,9 @@ export function computeVelocityByPriority(tasks: ReadonlyArray<Task>) {
   };
 
   tasks.forEach((t) => {
-    if (t.completedAt) {
-      groups[t.priority].push(daysBetween(t.createdAt, t.completedAt));
+    if (t.completedAt && t.createdAt) {
+      const days = daysBetween(t.createdAt, t.completedAt);
+      groups[t.priority].push(days);
     }
   });
 
@@ -165,7 +177,7 @@ export function computeVelocityByPriority(tasks: ReadonlyArray<Task>) {
 }
 
 // -------------------------------------
-// Weekly Throughput
+// Weekly Throughput (SAFE)
 // -------------------------------------
 export function computeThroughputByWeek(tasks: ReadonlyArray<Task>) {
   const byWeek = new Map<string, { count: number; revenue: number }>();
@@ -174,8 +186,9 @@ export function computeThroughputByWeek(tasks: ReadonlyArray<Task>) {
     if (!t.completedAt) return;
 
     const d = new Date(t.completedAt);
-    const key = `${d.getUTCFullYear()}-W${getWeekNumber(d)}`;
+    if (isNaN(d.getTime())) return;
 
+    const key = `${d.getUTCFullYear()}-W${getWeekNumber(d)}`;
     const v = byWeek.get(key) ?? { count: 0, revenue: 0 };
     v.count += 1;
     v.revenue += t.revenue;
@@ -211,7 +224,7 @@ export function computeWeightedPipeline(tasks: ReadonlyArray<Task>): number {
 }
 
 // -------------------------------------
-// Forecast
+// Forecast (SAFE)
 // -------------------------------------
 export function computeForecast(
   weekly: Array<{ week: string; revenue: number }>,
@@ -228,9 +241,8 @@ export function computeForecast(
   const sumXY = x.reduce((s, v, i) => s + v * y[i], 0);
   const sumXX = x.reduce((s, v) => s + v * v, 0);
 
-  const slope =
-    (n * sumXY - sumX * sumY) /
-    (n * sumXX - sumX * sumX || 1);
+  const denom = n * sumXX - sumX * sumX || 1;
+  const slope = (n * sumXY - sumX * sumY) / denom;
 
   const intercept = (sumY - slope * sumX) / n;
 
@@ -249,7 +261,7 @@ export function computeForecast(
 }
 
 // -------------------------------------
-// Cohort Revenue
+// Cohort Revenue (SAFE)
 // -------------------------------------
 export function computeCohortRevenue(tasks: ReadonlyArray<Task>) {
   const rows: Array<{
@@ -261,10 +273,12 @@ export function computeCohortRevenue(tasks: ReadonlyArray<Task>) {
   const byKey = new Map<string, number>();
 
   tasks.forEach((t) => {
+    if (!t.createdAt) return;
+
     const d = new Date(t.createdAt);
-    const key = `${d.getUTCFullYear()}-W${getWeekNumber(
-      d
-    )}|${t.priority}`;
+    if (isNaN(d.getTime())) return;
+
+    const key = `${d.getUTCFullYear()}-W${getWeekNumber(d)}|${t.priority}`;
     byKey.set(key, (byKey.get(key) ?? 0) + t.revenue);
   });
 

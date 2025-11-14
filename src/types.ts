@@ -9,9 +9,14 @@ export interface Task {
   priority: Priority;
   status: Status;
   notes?: string;
-  createdAt: string; // ISO date string
-  completedAt?: string; // ISO date string if Done
+
+  // Make createdAt OPTIONAL
+  createdAt?: string;
+
+  // optional
+  completedAt?: string;
 }
+
 
 export interface DerivedTask extends Task {
   roi: number | null; // null means N/A

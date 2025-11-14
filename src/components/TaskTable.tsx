@@ -1,3 +1,4 @@
+// src/components/TaskTable.tsx
 import { useMemo, useState } from 'react';
 import {
   Box,
@@ -36,20 +37,29 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
 
   const existingTitles = useMemo(() => tasks.map(t => t.title), [tasks]);
 
-  // Stable sorted tasks
+  // Stable tasks with deterministic tie-breakers
   const stableTasks = useMemo(() => {
     return [...tasks].sort((a, b) => {
       const aROI = a.roi ?? -Infinity;
       const bROI = b.roi ?? -Infinity;
       if (bROI !== aROI) return bROI - aROI;
 
-      if (b.priorityWeight !== a.priorityWeight)
+      if (b.priorityWeight !== a.priorityWeight) {
         return b.priorityWeight - a.priorityWeight;
+      }
 
+      // Next tie-breaker: title (alphabetical)
       const titleComp = a.title.localeCompare(b.title);
       if (titleComp !== 0) return titleComp;
 
-      return a.createdAt.localeCompare(b.createdAt);
+      // Next tie-breaker: createdAt (older first) — guard if undefined
+      const aCreated = a.createdAt ?? '';
+      const bCreated = b.createdAt ?? '';
+      const createdComp = aCreated.localeCompare(bCreated);
+      if (createdComp !== 0) return createdComp;
+
+      // Final tie-breaker: id (always present)
+      return a.id.localeCompare(b.id);
     });
   }, [tasks]);
 
@@ -138,7 +148,7 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
                         <IconButton
                           size="small"
                           onClick={(e) => {
-                            e.stopPropagation(); // ← FIX #1
+                            e.stopPropagation(); // prevent row click
                             handleEditClick(t);
                           }}
                         >
@@ -152,7 +162,7 @@ export default function TaskTable({ tasks, onAdd, onUpdate, onDelete }: Props) {
                           size="small"
                           color="error"
                           onClick={(e) => {
-                            e.stopPropagation(); // ← FIX #2
+                            e.stopPropagation(); // prevent row click
                             onDelete(t.id);
                           }}
                         >
