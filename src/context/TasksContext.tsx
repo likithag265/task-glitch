@@ -19,6 +19,7 @@ const TasksContext = createContext<TasksContextValue | undefined>(undefined);
 
 export function TasksProvider({ children }: { children: ReactNode }) {
   const value = useTasks();
+
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
 }
 
