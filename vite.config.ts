@@ -1,17 +1,12 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { fileURLToPath } from 'url';
-import path, { dirname } from 'path';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
-// ESM-safe __dirname replacement
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
+// No Node imports. Works on Vercel / Netlify
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      "@": "/src",
     },
   },
 });
